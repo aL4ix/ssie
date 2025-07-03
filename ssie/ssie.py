@@ -6,6 +6,9 @@ DEFAULT_SHEET = 'Sheet1'
 
 
 class FileType:
+    """
+    Enumeration of supported file types for spreadsheet I/O.
+    """
     CSV = '.csv'
     XLS = '.xls'
     XLSX = '.xlsx'
@@ -13,21 +16,33 @@ class FileType:
 
 class SpreadSheet:
     """
-    Class that contains the data and allows to export with to_file() or a few other operations.
+    Represents a simple spreadsheet consisting of column headers and row data.
+
+    Provides methods to export to .csv, .xls, and .xlsx formats,
+    and to manipulate or extract data from the sheet.
     """
+
     def __init__(self, data: list[list], columns: list[str]):
+        """
+        Initialize a new SpreadSheet instance.
+
+        :param data: List of row data (each row is a list of values).
+        :param columns: List of column names.
+        """
         self.columns = columns
         self.data = data
 
-
     def to_file(self, filepath: str) -> None:
         """
-        Main method of this class, this allows to export the SpreadSheet to .csv .xls or .xlsx.
-        Just make sure to have the dependencies installed.
-        xlwt for xls, openpyxl for xlsx.
+        Export the spreadsheet to a file.
 
-        :param filepath: path to the file to export.
-        :return: None
+        Supported formats: .csv, .xls, .xlsx.
+        Ensure that the required libraries are installed:
+          - `xlwt` for .xls
+          - `openpyxl` for .xlsx
+
+        :param filepath: Destination file path including extension.
+        :raises ValueError: If file extension is unsupported.
         """
         path = pathlib.Path(filepath)
         match path.suffix.lower():
@@ -41,6 +56,11 @@ class SpreadSheet:
                 raise ValueError(NOT_SUPPORTED.format(filepath=filepath))
 
     def to_csv(self, filepath: str):
+        """
+        Export the spreadsheet as a CSV file.
+
+        :param filepath: Destination .csv file path.
+        """
         import csv
         with open(filepath, mode='w', newline='', encoding='utf8') as file:
             writer = csv.writer(file)
@@ -49,13 +69,21 @@ class SpreadSheet:
             writer.writerows(self.data)
 
     def to_xls(self, filepath: str):
+        """
+        Export the spreadsheet as a legacy Excel (.xls) file.
+
+        Requires: `xlwt` package.
+
+        :param filepath: Destination .xls file path.
+        """
         xlwt = importlib.import_module('xlwt')
         workbook = xlwt.Workbook()
         sheet = workbook.add_sheet(DEFAULT_SHEET)
 
         row_to_start = 0
-        for col_idx, col_name in enumerate(self.columns):
-            sheet.write(0, col_idx, col_name)
+        if self.columns:
+            for col_idx, col_name in enumerate(self.columns):
+                sheet.write(0, col_idx, col_name)
             row_to_start = 1
 
         for row_idx, row in enumerate(self.data, start=row_to_start):
@@ -65,6 +93,13 @@ class SpreadSheet:
         workbook.save(filepath)
 
     def to_xlsx(self, filepath: str):
+        """
+        Export the spreadsheet as an Excel .xlsx file.
+
+        Requires: `openpyxl` package.
+
+        :param filepath: Destination .xlsx file path.
+        """
         openpyxl = importlib.import_module('openpyxl')
         workbook = openpyxl.Workbook()
         sheet = workbook.active
@@ -76,13 +111,19 @@ class SpreadSheet:
         for row in self.data:
             sheet.append(row)
 
+        font = openpyxl.styles.Font() # The default font has a hardcoded color
+        for row in sheet.iter_rows():
+            for cell in row:
+                if cell.value is not None:
+                    cell.font = font
+
         workbook.save(filepath)
 
     def to_dict_records(self) -> list[dict]:
         """
         Returns a list of dicts, each dict containing the columns as keys.
 
-        :return: list of dicts.
+        :return: List of dicts representing rows.
         """
         result = []
         for row in self.data:
@@ -91,26 +132,41 @@ class SpreadSheet:
         return result
 
     def get_column(self, name: str) -> list:
+        """
+        Extract a single column by name.
+
+        :param name: Column header name.
+        :return: List of values in the specified column.
+        """
         col = self.columns.index(name)
         result = [row[col] for row in self.data]
         return result
 
     def __len__(self) -> int:
+        """
+        Return the number of data rows in the spreadsheet.
+        """
         return len(self.data)
 
     def __repr__(self):
+        """
+        Developer-friendly string representation.
+        """
         return f"SpreadSheet(columns={self.columns}, rows={self.data[:3]}...)"
 
 
 def read_file(filepath: str, has_columns=True) -> SpreadSheet:
     """
-    Main function to allow importing from .csv, .xls, or .xlsx.
-    Just make sure you have the dependencies installed:
-    xlrd for .xls, openpyxl for .xlsx.
+    Import a spreadsheet file (.csv, .xls, or .xlsx) into a SpreadSheet object.
 
-    :param filepath: path to the file to import.
-    :param has_columns: boolean
-    :return: SpreadSheet
+    Required packages:
+      - `xlrd` for .xls
+      - `openpyxl` for .xlsx
+
+    :param filepath: Path to the file.
+    :param has_columns: If True, the first row is treated as column headers.
+    :return: SpreadSheet instance.
+    :raises ValueError: If file extension is unsupported.
     """
     path = pathlib.Path(filepath)
     match path.suffix.lower():
@@ -124,7 +180,14 @@ def read_file(filepath: str, has_columns=True) -> SpreadSheet:
             raise ValueError(NOT_SUPPORTED.format(filepath=filepath))
 
 
-def import_csv(filepath: str, has_columns=True):
+def import_csv(filepath: str, has_columns=True) -> SpreadSheet:
+    """
+    Import a CSV file into a SpreadSheet object.
+
+    :param filepath: Path to the .csv file.
+    :param has_columns: If True, treats the first row as headers.
+    :return: SpreadSheet instance.
+    """
     import csv
     with open(filepath, newline='', encoding='utf8') as csvfile:
         reader = csv.reader(csvfile)
@@ -139,6 +202,15 @@ def import_csv(filepath: str, has_columns=True):
 
 
 def import_xls(filepath: str, has_columns=True) -> SpreadSheet:
+    """
+    Import a legacy Excel (.xls) file into a SpreadSheet object.
+
+    Requires: `xlrd` package.
+
+    :param filepath: Path to the .xls file.
+    :param has_columns: If True, treats the first row as headers.
+    :return: SpreadSheet instance.
+    """
     xlrd = importlib.import_module('xlrd')
     book = xlrd.open_workbook(filepath)
     sheet = book.sheet_by_index(0)
@@ -159,9 +231,18 @@ def import_xls(filepath: str, has_columns=True) -> SpreadSheet:
 
 
 def import_xlsx(filepath: str, has_columns=True) -> SpreadSheet:
+    """
+    Import a modern Excel (.xlsx) file into a SpreadSheet object.
+
+    Requires: `openpyxl` package.
+
+    :param filepath: Path to the .xlsx file.
+    :param has_columns: If True, treats the first row as headers.
+    :return: SpreadSheet instance.
+    """
     openpyxl = importlib.import_module('openpyxl')
     workbook = openpyxl.load_workbook(filename=filepath, data_only=True)
-    sheet = workbook.active  # Get the first (active) sheet
+    sheet = workbook.active
 
     rows = list(sheet.iter_rows(values_only=True))
     if not rows:
@@ -173,6 +254,7 @@ def import_xlsx(filepath: str, has_columns=True) -> SpreadSheet:
         row_to_start = 1
     else:
         columns = []
+
     data = [list(row) for row in rows[row_to_start:]]
 
     return SpreadSheet(data=data, columns=columns)
@@ -180,10 +262,12 @@ def import_xlsx(filepath: str, has_columns=True) -> SpreadSheet:
 
 def from_records(data: list[dict]) -> SpreadSheet:
     """
-    Allows to create a SpreadSheet from a list of dicts, each dict contains the columns as keys.
+    Create a SpreadSheet object from a list of dictionaries.
 
-    :param data: a list of dicts
-    :return: SpreadSheet
+    Each dictionary should represent a row, using column names as keys.
+
+    :param data: List of dictionaries.
+    :return: SpreadSheet instance.
     """
     if not data:
         return SpreadSheet(data=[], columns=[])
