@@ -1,5 +1,10 @@
+"""
+ssie a module for a Simple SpreadSheet Importer/Exporter.
+"""
+
 import importlib
 import pathlib
+import parse_nested_dict
 
 NOT_SUPPORTED = '{filepath} is not supported'
 DEFAULT_SHEET = 'Sheet1'
@@ -12,6 +17,7 @@ class FileType:
     CSV = '.csv'
     XLS = '.xls'
     XLSX = '.xlsx'
+    JSON = '.json'
 
 
 class SpreadSheet:
@@ -52,6 +58,8 @@ class SpreadSheet:
                 self.to_xls(filepath)
             case FileType.XLSX:
                 self.to_xlsx(filepath)
+            case FileType.JSON:
+                self.to_json(filepath)
             case _:
                 raise ValueError(NOT_SUPPORTED.format(filepath=filepath))
 
@@ -111,13 +119,28 @@ class SpreadSheet:
         for row in self.data:
             sheet.append(row)
 
-        font = openpyxl.styles.Font() # The default font has a hardcoded color
+        font = openpyxl.styles.Font()  # The default font has a hardcoded color
         for row in sheet.iter_rows():
             for cell in row:
                 if cell.value is not None:
                     cell.font = font
 
         workbook.save(filepath)
+
+    def to_json(self, filepath: str):
+        """
+        Export to .json file.
+
+        :param filepath: Destination .json file path.
+        """
+        import json
+        # Create a list of dictionaries for each row, using column names as keys
+        dict_data = [
+            {self.columns[i]: row[i] for i in range(len(self.columns))}
+            for row in self.data
+        ]
+        with open(filepath, 'w') as f:
+            json.dump(dict_data, f, indent=2)
 
     def to_dict_records(self) -> list[dict]:
         """
@@ -152,7 +175,7 @@ class SpreadSheet:
         """
         Developer-friendly string representation.
         """
-        return f"SpreadSheet(columns={self.columns}, rows={self.data[:3]}...)"
+        return f'SpreadSheet(columns={self.columns}, rows={self.data[:3]}...)'
 
 
 def read_file(filepath: str, has_columns=True) -> SpreadSheet:
@@ -176,6 +199,8 @@ def read_file(filepath: str, has_columns=True) -> SpreadSheet:
             return import_xls(filepath, has_columns)
         case FileType.XLSX:
             return import_xlsx(filepath, has_columns)
+        case FileType.JSON:
+            return import_json(filepath)
         case _:
             raise ValueError(NOT_SUPPORTED.format(filepath=filepath))
 
@@ -260,6 +285,20 @@ def import_xlsx(filepath: str, has_columns=True) -> SpreadSheet:
     return SpreadSheet(data=data, columns=columns)
 
 
+def import_json(filepath: str) -> SpreadSheet:
+    """
+    Import a JSON file into a SpreadSheet object.
+
+    Requires: `json` module and `from_nested_dict` function.
+
+    :param filepath: Path to the JSON file.
+    :return: SpreadSheet instance containing the parsed data.
+    """
+    import json
+    with open(filepath) as f:
+        return from_nested_dict(json.load(f))
+
+
 def from_records(data: list[dict]) -> SpreadSheet:
     """
     Create a SpreadSheet object from a list of dictionaries.
@@ -274,3 +313,30 @@ def from_records(data: list[dict]) -> SpreadSheet:
     columns = list(data[0].keys())
     rows = [list(d.values()) for d in data]
     return SpreadSheet(data=rows, columns=columns)
+
+
+def from_nested_dict(nested_dict: list[dict]) -> SpreadSheet:
+    """
+    Convert a nested dictionary (like JSON) to a flat SpreadSheet.
+
+    >>> input = [
+         {
+             'ColA': 'ValueA1',
+             'Nested': [
+                 {'ColB': 'ValueB1', 'ColC': 'ValueC1'},
+                 {'ColB': 'ValueB2', 'ColC': 'ValueC2'}
+             ]
+         },
+         {
+             'ColA': 'newA',
+             'Nested': [
+                 {'ColB': 'newB', 'ColC': 'newC'}
+             ]
+         }
+     ]
+    >>> from_nested_dict(input)
+    SpreadSheet(columns=['ColA', 'ColB', 'ColC'], rows=[['ValueA1', 'ValueB1', 'ValueC1'], ['ValueA1', 'ValueB2', 'ValueC2'], ['newA', 'newB', 'newC']]...)
+    """
+    columns = parse_nested_dict.get_columns(nested_dict[0])
+    data = parse_nested_dict.parse_matrix(nested_dict, columns)
+    return SpreadSheet(data, columns)
