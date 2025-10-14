@@ -1,6 +1,3 @@
-from ssie import SpreadSheet
-
-
 ERROR = 'Input must be a list of dictionaries with a mix of strings and nested lists of dictionaries.'
 
 
@@ -22,7 +19,7 @@ def get_columns(first_row: dict) -> list[str]:
     return columns
 
 
-def parse_matrix(json_data: list[dict], columns: list[str]) -> list:
+def parse_matrix(json_data: list[dict], columns: list[str], repeat_when_flattening=False) -> list:
     data = []
     for row in json_data:
         data_row_dict = {}
@@ -47,14 +44,16 @@ def parse_matrix(json_data: list[dict], columns: list[str]) -> list:
                 remaining_columns = [
                     c for c in columns if c not in data_row_dict]
                 matrix = parse_matrix(value, remaining_columns)
+                cloned_data_row_dict = data_row_dict.copy()
                 for ma_row in matrix:
-                    cloned_data_row_dict = data_row_dict.copy()
                     for ma_index, ma_col in enumerate(remaining_columns):
                         cloned_data_row_dict[ma_col] = ma_row[ma_index]
                     data_row = []
                     for col in columns:
                         data_row.append(cloned_data_row_dict[col])
                     data.append(data_row)
+                    if not repeat_when_flattening:
+                        cloned_data_row_dict = {key: '' for key in data_row_dict}
         if not has_list:
             data_row = []
             for col in columns:

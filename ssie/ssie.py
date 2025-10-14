@@ -315,7 +315,7 @@ def from_records(data: list[dict]) -> SpreadSheet:
     return SpreadSheet(data=rows, columns=columns)
 
 
-def from_nested_dict(nested_dict: list[dict]) -> SpreadSheet:
+def from_nested_dict(nested_dict: list[dict], repeat_when_flattening=False) -> SpreadSheet:
     """
     Convert a nested dictionary (like JSON) to a flat SpreadSheet.
 
@@ -338,5 +338,5 @@ def from_nested_dict(nested_dict: list[dict]) -> SpreadSheet:
     SpreadSheet(columns=['ColA', 'ColB', 'ColC'], rows=[['ValueA1', 'ValueB1', 'ValueC1'], ['ValueA1', 'ValueB2', 'ValueC2'], ['newA', 'newB', 'newC']]...)
     """
     columns = parse_nested_dict.get_columns(nested_dict[0])
-    data = parse_nested_dict.parse_matrix(nested_dict, columns)
+    data = parse_nested_dict.parse_matrix(nested_dict, columns, repeat_when_flattening)
     return SpreadSheet(data, columns)
