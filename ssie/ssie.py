@@ -4,7 +4,7 @@ ssie a module for a Simple SpreadSheet Importer/Exporter.
 
 import importlib
 import pathlib
-import parse_nested_dict
+from . import parse_nested_dict
 
 NOT_SUPPORTED = '{filepath} is not supported'
 DEFAULT_SHEET = 'Sheet1'
