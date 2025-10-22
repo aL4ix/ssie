@@ -42,7 +42,7 @@ class SpreadSheet:
         """
         Export the spreadsheet to a file.
 
-        Supported formats: .csv, .xls, .xlsx.
+        Supported formats: .csv, .xls, .xlsx or .json.
         Ensure that the required libraries are installed:
           - `xlwt` for .xls
           - `openpyxl` for .xlsx
@@ -119,7 +119,9 @@ class SpreadSheet:
         for row in self.data:
             sheet.append(row)
 
-        font = openpyxl.styles.Font()  # The default font has a hardcoded color
+        # Replacing the default font, which has a hardcoded color
+        font = openpyxl.styles.Font()
+        
         for row in sheet.iter_rows():
             for cell in row:
                 if cell.value is not None:
@@ -181,6 +183,7 @@ class SpreadSheet:
 def read_file(filepath: str, has_columns=True) -> SpreadSheet:
     """
     Import a spreadsheet file (.csv, .xls, or .xlsx) into a SpreadSheet object.
+    Can also import .json files that represent spreadsheets.
 
     Required packages:
       - `xlrd` for .xls
@@ -200,7 +203,7 @@ def read_file(filepath: str, has_columns=True) -> SpreadSheet:
         case FileType.XLSX:
             return import_xlsx(filepath, has_columns)
         case FileType.JSON:
-            return import_json(filepath)
+            return import_json(filepath, repeat_when_flattening=False)
         case _:
             raise ValueError(NOT_SUPPORTED.format(filepath=filepath))
 
@@ -285,7 +288,7 @@ def import_xlsx(filepath: str, has_columns=True) -> SpreadSheet:
     return SpreadSheet(data=data, columns=columns)
 
 
-def import_json(filepath: str) -> SpreadSheet:
+def import_json(filepath: str, repeat_when_flattening=False) -> SpreadSheet:
     """
     Import a JSON file into a SpreadSheet object.
 
@@ -296,7 +299,7 @@ def import_json(filepath: str) -> SpreadSheet:
     """
     import json
     with open(filepath) as f:
-        return from_nested_dict(json.load(f))
+        return from_nested_dict(json.load(f), repeat_when_flattening)
 
 
 def from_records(data: list[dict]) -> SpreadSheet:
@@ -338,5 +341,6 @@ def from_nested_dict(nested_dict: list[dict], repeat_when_flattening=False) -> S
     SpreadSheet(columns=['ColA', 'ColB', 'ColC'], rows=[['ValueA1', 'ValueB1', 'ValueC1'], ['ValueA1', 'ValueB2', 'ValueC2'], ['newA', 'newB', 'newC']]...)
     """
     columns = parse_nested_dict.get_columns(nested_dict[0])
-    data = parse_nested_dict.parse_matrix(nested_dict, columns, repeat_when_flattening)
+    data = parse_nested_dict.parse_matrix(
+        nested_dict, columns, repeat_when_flattening)
     return SpreadSheet(data, columns)
