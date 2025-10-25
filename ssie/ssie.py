@@ -121,7 +121,7 @@ class SpreadSheet:
 
         # Replacing the default font, which has a hardcoded color
         font = openpyxl.styles.Font()
-        
+
         for row in sheet.iter_rows():
             for cell in row:
                 if cell.value is not None:
@@ -166,6 +166,18 @@ class SpreadSheet:
         col = self.columns.index(name)
         result = [row[col] for row in self.data]
         return result
+
+    def iterrows(self) -> tuple[int, list]:
+        """
+        Iterates over rows of the data, yielding the row index and the row itself.
+
+        Similar to `pandas.DataFrame.iterrows()`, but yields a list instead of a Series.
+
+        Yields:
+            tuple[int, list]: (row index, row)
+        """
+        for enumeration in enumerate(self.data):
+            yield enumeration
 
     def __len__(self) -> int:
         """
